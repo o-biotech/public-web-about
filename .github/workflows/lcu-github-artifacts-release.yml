@@ -22,26 +22,24 @@ env:
 
 jobs:
   build:
-    # Build And Publish
     name: Build and Publish
     runs-on: ubuntu-latest
     steps:
-      # checkout repository
+      # Checkout repository
       - name: Checkout Repository
         uses: actions/checkout@v2
         with:
           fetch-depth: '0'
 
-      # set variables
+      # Set variables
       - name: Set variables
         id: vars
         run: |
           branch=${GITHUB_REF##*/}
 
-          echo ::set-output name=branchName::$branch
+          echo "::set-output name=branchName::$branch"
            
-          if [ "$branch" == "${{ env.MainBranch }}" ]
-          then
+          if [ "$branch" == "${{ env.MainBranch }}" ]; then
               echo "::set-output name=versionBump::minor"
           else
               echo "::set-output name=versionBump::patch"
@@ -52,7 +50,7 @@ jobs:
           echo "Current branch is ${{ steps.vars.outputs.branchName }}"
           echo "Version bump type is ${{ steps.vars.outputs.versionBump }}"
 
-      # bump version
+      # Bump version
       - name: Bump version
         uses: fathym/github-tag-action@master
         id: versionBump
@@ -64,20 +62,20 @@ jobs:
           DRY_RUN: true
       - run: echo "New version is ${{ steps.versionBump.outputs.new_tag }}"
 
-      # Check package.json exists
+      # Check package.json existence
       - name: Check package.json existence
         id: package_json_exists
         uses: fathym/file-existence-action@master
         with:
           files: 'package.json'
 
-      # replace text in package.json for main branch
+      # Replace version text for main branch
       - name: replace version text for main branch
         if: ${{ steps.vars.outputs.branchName == env.MainBranch && steps.package_json_exists.outputs.files_exists == 'true' }}
         shell: pwsh
         run: (Get-Content -path package.json -Raw) -replace "version patch","version ${{ steps.versionBump.outputs.new_tag }} --no-git-tag-version -f" | Set-Content -Path package.json
 
-      # replace text in package.json for dev branches
+      # Replace tag text for dev branches
       - name: replace tag text for dev branches
         if: ${{ steps.vars.outputs.branchName != env.MainBranch && steps.package_json_exists.outputs.files_exists == 'true' }}
         shell: pwsh
@@ -88,31 +86,40 @@ jobs:
         shell: pwsh
         run: (Get-Content -path package.json -Raw) -replace "version patch","version ${{ steps.versionBump.outputs.new_tag }}-${{ steps.vars.outputs.branchName }} --no-git-tag-version -f" | Set-Content -Path package.json
 
-      # run npm commands
+      # Run npm commands
       - uses: actions/setup-node@v2
         if: ${{ (!!env.InstallCommand || !!env.BuildCommand) && steps.package_json_exists.outputs.files_exists == 'true' }}
         with:
           node-version: '*'
           registry-url: ${{ env.NPMRegistry }}
 
-      # install npm dependencies from package-lock.json
+      # Install npm dependencies
       - name: npm install
         if: ${{ !!env.InstallCommand && steps.package_json_exists.outputs.files_exists == 'true' }}
         run: ${{ env.InstallCommand }}
 
-      # build npm
+      # Build npm
       - name: npm build
         if: ${{ !!env.BuildCommand && steps.package_json_exists.outputs.files_exists == 'true' }}
         run: ${{ env.BuildCommand }}
 
-      # publish github artifacts
-      - name: Archive production artifacts
-        uses: actions/upload-artifact@v3
+      # Upload versioned artifact to GitHub Artifacts
+      - name: Upload versioned artifact to GitHub Artifacts
+        uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.event.organization.name }}-${{ github.event.repository.name }}
+          name: ${{ github.event.organization.name }}-${{ github.event.repository.name }}-${{ steps.versionBump.outputs.new_tag }}
           path: ${{ env.Output }}
-          
-      # bump version and push tag
+          retention-days: 30
+
+      # Upload latest artifact to GitHub Artifacts
+      - name: Upload latest artifact to GitHub Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.organization.name }}-${{ github.event.repository.name }}-latest
+          path: ${{ env.Output }}
+          retention-days: 30
+
+      # Bump version and push tag
       - name: Bump version and push tag
         uses: fathym/github-tag-action@master
         id: versionBumpTag
@@ -124,23 +131,37 @@ jobs:
           DRY_RUN: false
       - run: echo "New version is ${{ steps.versionBump.outputs.new_tag }}"
 
-      # Upload artifacts to Azure Blob Storage
-      - name: Upload artifacts to Azure Blob Storage
+      # Download versioned artifact before uploading to Azure Blob Storage
+      - name: Download versioned artifact for Azure Blob Storage
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ github.event.organization.name }}-${{ github.event.repository.name }}-${{ steps.versionBump.outputs.new_tag }}
+          path: ./artifacts/versioned
+
+      # Upload versioned artifact to Azure Blob Storage
+      - name: Upload versioned artifact to Azure Blob Storage
         uses: fixpoint/azblob-upload-artifact@v4
         with:
           connection-string: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
           name: ${{ github.event.organization.name }}-${{ github.event.repository.name }}-${{ steps.versionBump.outputs.new_tag }}
-          path: deployments/${{ github.event.organization.name }}/${{ github.event.repository.name }}/${{ steps.versionBump.outputs.new_tag }}
+          path: ./artifacts/versioned
 
-      # Upload artifacts to Azure Blob Storage
-      - name: Upload artifacts to Azure Blob Storage
+      # Download latest artifact before uploading to Azure Blob Storage
+      - name: Download latest artifact for Azure Blob Storage
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ github.event.organization.name }}-${{ github.event.repository.name }}-latest
+          path: ./artifacts/latest
+
+      # Upload latest artifact to Azure Blob Storage
+      - name: Upload latest artifact to Azure Blob Storage
         uses: fixpoint/azblob-upload-artifact@v4
         with:
           connection-string: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
           name: ${{ github.event.organization.name }}-${{ github.event.repository.name }}-latest
-          path: deployments/${{ github.event.organization.name }}/${{ github.event.repository.name }}/latest
+          path: ./artifacts/latest
 
-      # webhook to LowCodeUnit
+      # Webhook to LowCodeUnit
       - name: Invoke deployment hook
         uses: fathym/workflow-webhook@v2
         env:
