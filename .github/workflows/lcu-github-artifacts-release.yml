@@ -111,7 +111,7 @@ jobs:
         with:
           name: ${{ github.event.organization.name }}-${{ github.event.repository.name }}
           path: ${{ env.Output }}
-
+          
       # bump version and push tag
       - name: Bump version and push tag
         uses: fathym/github-tag-action@master
@@ -123,6 +123,14 @@ jobs:
           WITH_V: false
           DRY_RUN: false
       - run: echo "New version is ${{ steps.versionBump.outputs.new_tag }}"
+
+      # Upload artifacts to Azure Blob Storage
+      - name: Upload artifacts to Azure Blob Storage
+        uses: fixpoint/azblob-upload-artifact@v4
+        with:
+          connection-string: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+          name: ${{ github.event.organization.name }}-${{ github.event.repository.name }}-${{ steps.versionBump.outputs.new_tag }}
+          path: deployments/${{ github.event.organization.name }}/${{ github.event.repository.name }}/${{ steps.versionBump.outputs.new_tag }}
 
       # webhook to LowCodeUnit
       - name: Invoke deployment hook
