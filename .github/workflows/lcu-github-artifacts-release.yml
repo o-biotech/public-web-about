@@ -107,7 +107,7 @@ jobs:
       - name: Upload versioned artifact to GitHub Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.event.organization.name }}-${{ github.event.repository.name }}-${{ steps.versionBump.outputs.new_tag }}
+          name: ${{ github.event.organization.login }}-${{ github.event.repository.name }}-${{ steps.versionBump.outputs.new_tag }}
           path: ${{ env.Output }}
           retention-days: 30
 
@@ -115,7 +115,7 @@ jobs:
       - name: Upload latest artifact to GitHub Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.event.organization.name }}-${{ github.event.repository.name }}-latest
+          name: ${{ github.event.organization.login }}-${{ github.event.repository.name }}-latest
           path: ${{ env.Output }}
           retention-days: 30
 
@@ -136,7 +136,7 @@ jobs:
       - name: Download versioned artifact for Azure Blob Storage
         uses: actions/download-artifact@v4
         with:
-          name: ${{ github.event.organization.name }}-${{ github.event.repository.name }}-${{ steps.versionBump.outputs.new_tag }}
+          name: ${{ github.event.organization.login }}-${{ github.event.repository.name }}-${{ steps.versionBump.outputs.new_tag }}
           path: ./artifacts/versioned
 
       # Upload versioned artifact to Azure Blob Storage
@@ -144,7 +144,7 @@ jobs:
         uses: fixpoint/azblob-upload-artifact@v4
         with:
           connection-string: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-          container: ${{ github.event.organization.name }}-${{ github.event.repository.name }}
+          container: ${{ github.event.organization.login }}-${{ github.event.repository.name }}
           name: deployments/${{ steps.versionBump.outputs.new_tag }}
           path: ./artifacts/versioned
 
@@ -152,7 +152,7 @@ jobs:
       - name: Download latest artifact for Azure Blob Storage
         uses: actions/download-artifact@v4
         with:
-          name: ${{ github.event.organization.name }}-${{ github.event.repository.name }}-latest
+          name: ${{ github.event.organization.login }}-${{ github.event.repository.name }}-latest
           path: ./artifacts/latest
 
       # Upload latest artifact to Azure Blob Storage
@@ -160,7 +160,7 @@ jobs:
         uses: fixpoint/azblob-upload-artifact@v4
         with:
           connection-string: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-          container: ${{ github.event.organization.name }}-${{ github.event.repository.name }}
+          container: ${{ github.event.organization.login }}-${{ github.event.repository.name }}
           name: deployments/latest
           path: ./artifacts/latest
 
