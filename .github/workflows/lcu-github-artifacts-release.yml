@@ -130,7 +130,7 @@ jobs:
           WITH_V: false
           DRY_RUN: false
       - run: echo "New version is ${{ steps.versionBump.outputs.new_tag }}"
-      - run: echo "New version is ${{ github.event }}"
+      - run: echo '${{ toJson(github.event) }}'
 
       # Download versioned artifact before uploading to Azure Blob Storage
       - name: Download versioned artifact for Azure Blob Storage
