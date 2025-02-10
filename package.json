@@ -1,6 +1,7 @@
 {
   "name": "tmp-cpa",
   "version": "1.0.0",
+  "private": true,
   "description": "Plasmic app for rHkBiZ4yBV5pRsd8sZ9ea5",
   "keywords": [
     "gatsby"
