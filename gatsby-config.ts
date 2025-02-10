@@ -9,7 +9,7 @@ const config: GatsbyConfig = {
   // If you use VSCode you can also use the GraphQL plugin
   // Learn more at: https://gatsby.dev/graphql-typegen
   graphqlTypegen: true,
-  pathPrefix: "", // Add your path prefix here
+  pathPrefix: "./", // Add your path prefix here
   plugins: [{
   resolve: "@plasmicapp/loader-gatsby",
   options: {
